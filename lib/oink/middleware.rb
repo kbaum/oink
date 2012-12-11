@@ -1,14 +1,19 @@
 require 'hodel_3000_compliant_logger'
 require 'oink/utils/hash_utils'
 require 'oink/instrumentation'
+require 'socket'
 
 module Oink
   class Middleware
+
+    include ActionView::Helpers::NumberHelper
+
 
     def initialize(app, options = {})
       @app         = app
       @logger      = options[:logger] || Hodel3000CompliantLogger.new("log/oink.log")
       @instruments = options[:instruments] ? Array(options[:instruments]) : [:memory, :activerecord]
+      @hostname = Socket.gethostname
 
       Oink.extend_active_record! if @instruments.include?(:activerecord)
     end
@@ -39,7 +44,7 @@ module Oink
     def log_memory
       if @instruments.include?(:memory)
         memory = Oink::Instrumentation::MemorySnapshot.memory
-        @logger.info("Memory usage: #{memory} | PID: #{$$}")
+        @logger.info("Memory usage: #{ number_to_human_size(memory * 1000) } | PID: #{$$} | HOSTNAME: #{hostname}")
       end
     end
 
@@ -52,7 +57,14 @@ module Oink
       end
     end
 
+    
+
   private
+
+    def hostname
+      @hostname
+    end
+
 
     def rails3_routing_info(env)
       env['action_dispatch.request.parameters']
